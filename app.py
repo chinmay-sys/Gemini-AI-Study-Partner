@@ -11,7 +11,7 @@ st.set_page_config(
 )
 
 # GEMINI CLIENT
-client = genai.Client(api_key="AIzaSyAFaxV8_vctU2d6eY0iGpmdAErOrxAPOmc")
+client = genai.Client(api_key="AIzaSyCS_PEp3N3RiqHtxUp8iplW-kbo7Qn3_o4")
 
 def chatbot(user_input):
     try:
