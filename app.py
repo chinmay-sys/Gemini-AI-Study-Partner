@@ -2,6 +2,11 @@
 import streamlit as st
 from google import genai
 from datetime import datetime
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # PAGE CONFIG
 st.set_page_config(
@@ -9,9 +14,12 @@ st.set_page_config(
     page_icon="🤖",
     layout="wide"
 )
-
+api_key = os.environ.get("GEMINI_API_KEY")
+if not api_key:
+    st.error("⚠️ GEMINI_API_KEY not found. Please set it in your .env file.")
+    st.stop()
 # GEMINI CLIENT
-client = genai.Client(api_key="AIzaSyCS_PEp3N3RiqHtxUp8iplW-kbo7Qn3_o4")
+client = genai.Client(api_key=api_key)
 
 def chatbot(user_input):
     try:
