@@ -90,7 +90,7 @@ def chat():
     try:
         user_input = request.json.get('message')
         response = client.models.generate_content(
-            model="gemini-2.0-flash-exp",
+            model="gemini-2.5-flash",
             contents=user_input
         )
         return jsonify({'response': response.text})
