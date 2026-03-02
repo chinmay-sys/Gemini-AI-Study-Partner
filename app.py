@@ -1,175 +1,101 @@
-# Gemini AI Study Partner
-import streamlit as st
+from flask import Flask, request, jsonify
 from google import genai
-from datetime import datetime
 import os
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
-# PAGE CONFIG
-st.set_page_config(
-    page_title="Gemini AI Assistant",
-    page_icon="🤖",
-    layout="wide"
-)
+app = Flask(__name__)
 api_key = os.environ.get("GEMINI_API_KEY")
-if not api_key:
-    st.error("⚠️ GEMINI_API_KEY not found. Please set it in your .env file.")
-    st.stop()
-# GEMINI CLIENT
 client = genai.Client(api_key=api_key)
 
-def chatbot(user_input):
+HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini AI Assistant</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0e1117; color: #fff; }
+        .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+        .header { text-align: center; padding: 20px 0; }
+        .header h1 { font-size: 34px; margin-bottom: 8px; }
+        .header p { color: #9ca3af; font-size: 15px; }
+        .chat-box { background: #1f2937; border-radius: 12px; padding: 20px; height: 500px; overflow-y: auto; margin: 20px 0; }
+        .message { margin: 15px 0; padding: 12px 16px; border-radius: 12px; }
+        .user { background: #1f2937; text-align: right; }
+        .bot { background: #111827; }
+        .input-area { display: flex; gap: 10px; }
+        input { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #374151; background: #1f2937; color: #fff; font-size: 16px; }
+        button { padding: 12px 24px; border-radius: 8px; border: none; background: #3b82f6; color: #fff; cursor: pointer; font-size: 16px; }
+        button:hover { background: #2563eb; }
+        .footer { text-align: center; color: #9ca3af; font-size: 14px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Gemini AI Assistant</h1>
+            <p>Your calm, reliable AI companion for questions and ideas</p>
+        </div>
+        <div class="chat-box" id="chatBox">
+            <div class="message bot">Hello 👋 I'm Gemini AI. Ask me anything — I'm here to help.</div>
+        </div>
+        <div class="input-area">
+            <input type="text" id="userInput" placeholder="Type your message and press Enter..." />
+            <button onclick="sendMessage()">Send</button>
+        </div>
+        <div class="footer">🚀 Built using Flask & Gemini API • Academic Demo Project</div>
+    </div>
+    <script>
+        const chatBox = document.getElementById('chatBox');
+        const userInput = document.getElementById('userInput');
+
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        async function sendMessage() {
+            const message = userInput.value.trim();
+            if (!message) return;
+
+            chatBox.innerHTML += `<div class="message user">${message}</div>`;
+            userInput.value = '';
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+                const data = await response.json();
+                chatBox.innerHTML += `<div class="message bot">${data.response || data.error}</div>`;
+            } catch (error) {
+                chatBox.innerHTML += `<div class="message bot">⚠️ Error: ${error.message}</div>`;
+            }
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+    </script>
+</body>
+</html>"""
+
+@app.route('/')
+def home():
+    return HTML
+
+@app.route('/chat', methods=['POST'])
+def chat():
     try:
+        user_input = request.json.get('message')
         response = client.models.generate_content(
-            model="gemini-flash-latest",
+            model="gemini-2.0-flash-exp",
             contents=user_input
         )
-        return response.text
+        return jsonify({'response': response.text})
     except Exception as e:
-        return f"⚠️ Error: {e}"
+        return jsonify({'error': str(e)}), 400
 
-# SIDEBAR – USER PROFILE
-with st.sidebar:
-    st.markdown("## 👤 User Profile")
-    st.markdown("---")
-
-    username = st.text_input("Name", value="Guest User")
-    role = st.selectbox("Role", ["Student", "Developer", "Researcher", "Other"])
-
-    theme = st.radio("Theme", ["Dark", "Darker"], index=0)
-
-    st.markdown("---")
-    st.markdown("## 🤖 Bot Info")
-    st.markdown("- **Name:** Gemini AI")
-    st.markdown("- **Model:** Gemini Flash")
-    st.markdown("- **Status:** 🟢 Online")
-
-    st.markdown("---")
-    if st.button("🗑️ Clear Chat"):
-        st.session_state.messages = []
-        st.session_state.welcomed = False
-        st.rerun()
-
-# THEME STYLES
-if theme == "Dark":
-    bg_color = "#0e1117"
-    user_bg = "#1f2937"
-    bot_bg = "#111827"
-else:
-    bg_color = "#07090f"
-    user_bg = "#111827"
-    bot_bg = "#030712"
-
-st.markdown(f"""
-<style>
-    html, body, [data-testid="stAppViewContainer"] {{
-        background-color: {bg_color};
-        font-family: 'Segoe UI', sans-serif;
-    }}
-
-    .main {{
-        max-width: 900px;
-        margin: auto;
-    }}
-
-    .header {{
-        text-align: center;
-        padding: 10px 0 10px 0;
-    }}
-
-    .header h1 {{
-        margin-bottom: 4px;
-        font-size: 34px;
-    }}
-
-    .header p {{
-        margin-top: 0;
-        font-size: 15px;
-        color: #9ca3af;
-    }}
-
-    .user-msg {{
-        background-color: {user_bg};
-        padding: 12px 16px;
-        border-radius: 12px;
-    }}
-
-    .bot-msg {{
-        background-color: {bot_bg};
-        padding: 12px 16px;
-        border-radius: 12px;
-    }}
-
-    footer {{
-        visibility: hidden;
-    }}
-</style>
-""", unsafe_allow_html=True)
-
-# HEADER
-st.markdown("""
-<div class="main">
-    <div class="header">
-        <h1>🤖 Gemini AI Assistant</h1>
-        <p>Your calm, reliable AI companion for questions and ideas</p>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-# CHAT STATE
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-if "welcomed" not in st.session_state:
-    st.session_state.welcomed = False
-
-# BOT WELCOME MESSAGE
-if not st.session_state.welcomed:
-    st.session_state.messages.append({
-        "role": "assistant",
-        "content": "Hello 👋 I’m Gemini AI. Ask me anything — I’m here to help.",
-        "time": "Gemini • online"
-    })
-    st.session_state.welcomed = True
-
-# CHAT DISPLAY
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        css_class = "user-msg" if msg["role"] == "user" else "bot-msg"
-        st.markdown(f"<div class='{css_class}'>{msg['content']}</div>", unsafe_allow_html=True)
-        st.caption(msg["time"])
-
-# INPUT
-user_input = st.chat_input("Type your message and press Enter...")
-
-if user_input:
-    timestamp = datetime.now().strftime("%H:%M")
-
-    st.session_state.messages.append({
-        "role": "user",
-        "content": user_input,
-        "time": f"{username} • {timestamp}"
-    })
-
-    with st.spinner("Gemini is thinking..."):
-        reply = chatbot(user_input)
-
-    st.session_state.messages.append({
-        "role": "assistant",
-        "content": reply,
-        "time": f"Gemini • {timestamp}"
-    })
-
-    st.rerun()
-
-# FOOTER
-st.markdown("---")
-st.markdown(
-    "<center style='color:#9ca3af; font-size:14px;'>"
-    "🚀 Built using Streamlit & Gemini API • Academic Demo Project"
-    "</center>",
-    unsafe_allow_html=True
-)
+if __name__ == '__main__':
+    app.run(debug=True)
